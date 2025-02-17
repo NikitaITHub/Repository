@@ -1,0 +1,333 @@
+----------------------------------------------------ИНСТРУКЦИЯ----------------------------------------------------
+
+			Если зададут вопрос "почему именно так написал?", отвечать:
+
+    1. Это самый оптимальный и читаемый вариант.
+    2. Некоторые функции (YEAR(), REGEXP()) не работают в SQLite, а strftime() и LIKE подходят для всех баз.
+    3. JOIN, BETWEEN, COALESCE — стандартные подходы, работающие быстрее альтернатив.
+
+					Как читать SQL-функции в коде?
+
+SQL-запросы можно разбирать по частям, читая их снизу вверх и слева направо, чтобы лучше понимать логику.
+
+1. Простое чтение SELECT
+
+SELECT first_name, last_name
+FROM employees;
+
+Как читать: "Выбери (SELECT) first_name и last_name из (FROM) таблицы employees."
+
+2. Чтение WHERE с LIKE
+
+SELECT first_name
+FROM employees
+WHERE last_name LIKE '___d%';
+
+Как читать: "Выбери (SELECT) first_name из (FROM) таблицы employees, где (WHERE) фамилия (last_name) имеет четвертый символ d (LIKE '___d%')."
+
+    LIKE означает "похоже на шаблон".
+    _ – это один неизвестный символ.
+    % – это любое количество символов после d.
+
+3. Чтение JOIN
+
+SELECT e.first_name, j.job_title
+FROM employees e
+JOIN jobs j ON e.job_id = j.job_id;
+
+Как читать: "Выбери (SELECT) first_name из таблицы employees (e) и job_title из таблицы jobs (j). Объедини (JOIN) employees и jobs по (ON) job_id."
+
+    JOIN соединяет две таблицы.
+    ON указывает, по какому полю соединять.
+
+4. Чтение WHERE с BETWEEN
+
+SELECT *
+FROM orders
+WHERE CustomerID BETWEEN 10 AND 30;
+
+Как читать: "Выбери (SELECT) все столбцы (*) из таблицы orders, где (WHERE) CustomerID находится в диапазоне (BETWEEN) от 10 до 30."
+
+    BETWEEN 10 AND 30 — это "от 10 до 30 включительно".
+
+5. Чтение WHERE с IN
+
+SELECT first_name
+FROM employees
+WHERE job_id IN ('IT_PROG', 'SA_MAN');
+
+Как читать: "Выбери (SELECT) first_name из таблицы employees, где (WHERE) job_id входит в список (IN) 'IT_PROG' или 'SA_MAN'."
+
+    IN эквивалентен множественным OR.
+
+6. Чтение COUNT(), SUM(), AVG()
+
+SELECT COUNT(*) AS total_employees
+FROM employees;
+
+Как читать: "Посчитай (COUNT) количество строк (*) в таблице employees и назови (AS) этот столбец total_employees."
+
+SELECT SUM(price) AS total_revenue
+FROM flying;
+
+Как читать: "Сложи (SUM) все price из таблицы flying и назови (AS) total_revenue."
+
+SELECT AVG(flight_time) AS avg_flight_time
+FROM flying;
+
+Как читать: "Найди среднее (AVG) значение flight_time из таблицы flying и назови (AS) avg_flight_time."
+
+    SUM() — сумма всех значений.
+    AVG() — среднее арифметическое.
+    COUNT() — количество строк.
+
+7. Чтение HAVING
+
+SELECT department_id, COUNT(*) AS num_employees
+FROM employees
+GROUP BY department_id
+HAVING COUNT(*) > 10;
+
+Как читать: "Посчитай (COUNT(*)) количество сотрудников для каждого department_id. Оставь только те отделы (HAVING), где количество сотрудников больше 10."
+
+    GROUP BY группирует данные.
+    HAVING фильтрует уже агрегированные данные (в отличие от WHERE).
+
+8. Чтение ORDER BY
+
+SELECT first_name, salary
+FROM employees
+ORDER BY salary DESC;
+
+Как читать: "Выбери (SELECT) first_name и salary из таблицы employees, отсортируй (ORDER BY) по salary в порядке убывания (DESC)."
+
+    ASC – по возрастанию.
+    DESC – по убыванию.
+
+9. Чтение COALESCE()
+
+SELECT first_name, salary + (salary * COALESCE(commission_pct, 0)) AS total_salary
+FROM employees;
+
+Как читать: "Выбери (SELECT) first_name и зарплату с учетом комиссии (salary + (salary * COALESCE(commission_pct, 0))), если commission_pct — NULL, то заменяем его на 0."
+
+    COALESCE(value, default) – если value NULL, заменяем его на default.
+
+Почему COALESCE, а не IFNULL?
+
+    1. COALESCE() универсальный и работает в SQLite, PostgreSQL, MySQL, Oracle.
+    2. IFNULL() есть только в MySQL и SQLite.
+
+10. Чтение SUBQUERY (подзапросов)
+
+SELECT name
+FROM passengers
+WHERE id IN (
+    SELECT passenger_id
+    FROM fly_mapping
+    GROUP BY passenger_id
+    HAVING COUNT(*) = (
+        SELECT MAX(flight_count)
+        FROM (SELECT COUNT(*) AS flight_count FROM fly_mapping GROUP BY passenger_id) subquery
+    )
+);
+
+Как читать: "Выбери (SELECT) name из таблицы passengers, где id входит в список (IN), полученный из вложенного (subquery) запроса,
+который сначала группирует (GROUP BY) пассажиров, считает количество их полетов (COUNT(*)), а
+затем выбирает пассажиров с максимальным (MAX()) количеством полетов."
+
+----------------------------------------------------ИТОГ----------------------------------------------------
+
+    Читай код по структуре SELECT → FROM → JOIN → WHERE → GROUP BY → HAVING → ORDER BY.
+    Разбивай на куски:
+        SELECT → что выбираем?
+        FROM → откуда?
+        JOIN → какие связи?
+        WHERE → какие условия?
+        GROUP BY → как группируем?
+        HAVING → какие группы остаются?
+        ORDER BY → как сортируем?
+    Используй простые формулировки: "Выбери все поля (SELECT *) из таблицы orders, где год OrderDate равен 1997 (WHERE strftime('%Y', OrderDate) = '1997')."
+
+----------------------------------------------------ИНСТРУКЦИЯ----------------------------------------------------
+
+					 !!!ВНАЧАЛЕ ПРОЧТИТЕ ИНСТРУКЦИЮ!!!
+
+----------------------------------------------------Схема: HR----------------------------------------------------
+
+1:Выведите имена и фамилии сотрудников, которые получают вознаграждение к зарплате, но не привязаны ни к одному менеджеру
+
+SELECT e.first_name, e.last_name
+FROM employees e
+LEFT JOIN employees m ON e.manager_id = m.employee_id
+WHERE e.commission_pct IS NOT NULL
+AND m.employee_id IS NULL;
+
+Обоснование:
+
+    LEFT JOIN employees m ON e.manager_id = m.employee_id
+        Мы используем LEFT JOIN, чтобы соединить таблицу employees саму с собой.
+        В m попадают записи менеджеров, если они есть.
+        Если менеджер отсутствует, то m.employee_id будет NULL.
+
+    WHERE e.commission_pct IS NOT NULL
+        Отбираем только тех сотрудников, у которых commission_pct (комиссионное вознаграждение) не NULL.
+
+    AND m.employee_id IS NULL
+        Оставляем только тех, у кого нет менеджера.
+
+Почему LEFT JOIN, а не INNER JOIN?
+
+    INNER JOIN удалил бы всех сотрудников без менеджера, а LEFT JOIN позволяет нам оставить их.
+
+----------------------------------------------------Схема: HR----------------------------------------------------
+
+2: Выведите имя, номер телефона, а также почту постурдников, профессия которых не начинается на S
+
+SELECT e.first_name, e.phone_number, e.email
+FROM employees e
+JOIN jobs j ON e.job_id = j.job_id
+WHERE j.job_title NOT LIKE 'S%';
+
+Обоснование:
+
+    JOIN jobs j ON e.job_id = j.job_id
+        Соединяем employees и jobs, так как информация о профессии (job_title) хранится в jobs.
+
+    WHERE j.job_title NOT LIKE 'S%'
+        LIKE 'S%' означает, что строка начинается с "S".
+        NOT LIKE исключает такие строки.
+
+Почему LIKE вместо LEFT(job_title, 1) <> 'S'?
+
+    LIKE работает быстрее, так как LEFT() требует дополнительных операций над строками.
+
+----------------------------------------------------Схема: HR----------------------------------------------------
+
+3: Выведите имена сотрудников, у которых 4 буква в фамилии ‘d’
+
+SELECT first_name
+FROM employees
+WHERE last_name LIKE '___d%';
+
+Обоснование:
+
+    LIKE '___d%'
+        ___ (три _) означает, что первые три символа могут быть любыми.
+        d – конкретное требуемое значение.
+        % – оставшаяся часть фамилии.
+
+Почему LIKE вместо SUBSTRING(last_name, 4, 1) = 'd'?
+
+    LIKE работает быстрее, так как SUBSTRING() требует вычислений.
+
+----------------------------------------------------Схема: HR----------------------------------------------------
+
+4: Выведите имена и фамилии сотрудников, чей номер телефона начинается на 515
+
+SELECT first_name, last_name
+FROM employees
+WHERE phone_number LIKE '515%';
+
+Обоснование:
+
+    LIKE '515%'
+        LIKE '515%' означает, что номер начинается с 515.
+
+Почему LIKE вместо LEFT(phone_number, 3) = '515'?
+
+    LIKE выполняется быстрее.
+    LEFT() требует вычислений над каждым значением.
+
+----------------------------------------------------Схема: HR----------------------------------------------------
+
+5: Выведите имена и фамилии сотрудников, которые получают более 10000 усл. единиц в качестве зарплаты за месяц, учитывая комиссионное вознаграждение. Если в выборке нет записей сотрудников, у которых вознаграждений нет - считать за норму. 
+
+SELECT first_name, last_name
+FROM employees
+WHERE salary + (salary * COALESCE(commission_pct, 0)) > 10000;
+
+Обоснование:
+
+    salary + (salary * COALESCE(commission_pct, 0))
+        Учитываем возможное комиссионное вознаграждение (salary * commission_pct).
+        COALESCE(commission_pct, 0): если NULL, считаем как 0%.
+
+Почему COALESCE, а не IFNULL?
+
+    COALESCE более универсален и работает во всех SQL-движках.
+
+----------------------------------------------------Схема: HR----------------------------------------------------
+
+6: (regions) Выведите имена регионов, значение которых определяется 1 словом
+
+SELECT region_name 
+FROM regions 
+WHERE region_name NOT LIKE '% %';
+
+Обоснование:
+
+    NOT LIKE '% %'
+        % % означает, что в строке есть пробел.
+        NOT LIKE исключает такие строки.
+
+Почему LIKE вместо LENGTH(region_name) - LENGTH(REPLACE(region_name, ' ', '')) = 0?
+
+    LIKE быстрее и не требует вычислений.
+
+----------------------------------------------------Схема: SHOP----------------------------------------------------
+
+7: (orders) Выведите все заказы, которые были оформлены в 1997 году
+
+SELECT * 
+FROM orders 
+WHERE strftime('%Y', OrderDate) = '1997';
+
+Обоснование:
+
+    strftime('%Y', OrderDate) = '1997'
+        strftime('%Y', OrderDate): извлекает год из OrderDate.
+        Используем = для фильтрации.
+
+Почему strftime(), а не YEAR(OrderDate)?
+
+    YEAR() не поддерживается в SQLite.
+
+----------------------------------------------------Схема: SHOP----------------------------------------------------
+
+8: (orders) Выведите все данные о заказе, которые совершили покупатели с ID 10 до 30 включительно у продавцов, id которых от 4 до 10 не включительно
+
+SELECT * 
+FROM orders 
+WHERE CustomerID BETWEEN 10 AND 30 
+AND EmployeeID > 4 AND EmployeeID < 10;
+
+Обоснование:
+
+    CustomerID BETWEEN 10 AND 30
+        Используем BETWEEN, так как диапазон включает границы.
+
+    EmployeeID > 4 AND EmployeeID < 10
+        Исключаем 4 и 10 (> 4 AND < 10 → значит, 5-9).
+
+Почему BETWEEN вместо CustomerID >= 10 AND CustomerID <= 30?
+
+    BETWEEN проще и читабельнее.
+
+----------------------------------------------------Схема: SHOP----------------------------------------------------
+
+9: (suppliers) Выведите ID поставщика, имя которого состоит из более 5 слов.
+
+SELECT SupplierID
+FROM suppliers
+WHERE LENGTH(SupplierName) - LENGTH(REPLACE(SupplierName, ' ', '')) >= 5;
+
+Обоснование:
+
+    LENGTH(SupplierName) - LENGTH(REPLACE(SupplierName, ' ', ''))
+        Считаем количество пробелов (LENGTH(SupplierName) - LENGTH(REPLACE(SupplierName, ' ', ''))).
+        Если пробелов 5 или больше, значит, слов более 5.
+
+Почему LENGTH(), а не REGEXP '[^ ]{6,}'?
+
+    REGEXP не поддерживается в SQLite без плагинов.
